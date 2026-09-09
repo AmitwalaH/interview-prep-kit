@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { readFileSync, writeFileSync } from "fs";
 import { generateKit, KitCase, PipelineError } from "../lib/pipeline";
 
@@ -69,6 +70,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error("Error running batch evaluation:", err.message);
+  console.error("Fatal error running batch evaluation:", err.message);
   process.exit(1);
 });

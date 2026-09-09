@@ -1,11 +1,5 @@
-/**
- * The ONLY file that knows which LLM provider we use. Everything else
- * calls `callLLM(prompt)` and gets text back, swapping providers later
- * (or adding a fallback provider) means editing this file alone.
- */
-
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyAtukJHY_7Z-9wljzfmnPMjGL_5MqzrGac';
-const MODEL = process.env.LLM_MODEL || "gemini-2.0-flash-lite";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const MODEL = process.env.LLM_MODEL || "gemini-3.5-flash-lite";
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
 const MAX_RETRIES = 4;
@@ -13,7 +7,10 @@ const BASE_DELAY_MS = 2000;
 const REQUEST_TIMEOUT_MS = 30_000;
 
 export class LLMError extends Error {
-  constructor(public code: string, message: string) {
+  constructor(
+    public code: string,
+    message: string,
+  ) {
     super(message);
     this.name = "LLMError";
   }
@@ -65,7 +62,7 @@ export async function callLLM(prompt: string): Promise<string> {
           : BASE_DELAY_MS * 2 ** attempt;
         lastError = new LLMError(
           "RATE_LIMITED",
-          `Provider returned ${response.status}, backing off ${delay}ms`
+          `Provider returned ${response.status}, backing off ${delay}ms`,
         );
         if (attempt < MAX_RETRIES) {
           await sleep(delay);
@@ -76,7 +73,10 @@ export async function callLLM(prompt: string): Promise<string> {
 
       if (!response.ok) {
         const body = await response.text();
-        throw new LLMError("PROVIDER_ERROR", `Gemini returned ${response.status}: ${body.slice(0, 300)}`);
+        throw new LLMError(
+          "PROVIDER_ERROR",
+          `Gemini returned ${response.status}: ${body.slice(0, 300)}`,
+        );
       }
 
       const data = (await response.json()) as any;
@@ -89,7 +89,10 @@ export async function callLLM(prompt: string): Promise<string> {
       clearTimeout(timeout);
       if (err instanceof LLMError) throw err;
       if ((err as Error).name === "AbortError") {
-        lastError = new LLMError("TIMEOUT", `Request timed out after ${REQUEST_TIMEOUT_MS}ms`);
+        lastError = new LLMError(
+          "TIMEOUT",
+          `Request timed out after ${REQUEST_TIMEOUT_MS}ms`,
+        );
       } else {
         lastError = err as Error;
       }
@@ -101,5 +104,8 @@ export async function callLLM(prompt: string): Promise<string> {
     }
   }
 
-  throw lastError ?? new LLMError("UNKNOWN_ERROR", "LLM call failed for an unknown reason");
+  throw (
+    lastError ??
+    new LLMError("UNKNOWN_ERROR", "LLM call failed for an unknown reason")
+  );
 }
