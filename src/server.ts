@@ -4,6 +4,7 @@ import cors from "cors";
 import mongoose from "mongoose";
 import session from "express-session";
 import MongoStore from "connect-mongo";
+import authRoutes from "./routes/auth";
 
 const app = express();
 
@@ -53,6 +54,8 @@ app.get("/health", (_req, res) => {
     mongoConnected: mongoose.connection.readyState === 1,
   });
 });
+
+app.use("/api/auth", authRoutes);
 
 const PORT = process.env.PORT || 4000;
 
