@@ -1,4 +1,8 @@
 import { Kit, validateKit } from "./schema";
+import { PipelineError } from "./errors";
+import { extractRoleAndRequirements } from "./extractRequirements";
+import { checkCoverage } from "./coverage";
+import { allocateSchedule } from "./schedule";
 
 export interface KitCase {
   id: string;
@@ -7,15 +11,7 @@ export interface KitCase {
   days: number;
 }
 
-export class PipelineError extends Error {
-  constructor(
-    public code: string,
-    message: string,
-  ) {
-    super(message);
-    this.name = "PipelineError";
-  }
-}
+export { PipelineError };
 
 /**
  * Produces one kit for one case. This is the ONLY pipeline implementation
@@ -32,11 +28,22 @@ export async function generateKit(kitCase: KitCase): Promise<Kit> {
     throw new PipelineError("INVALID_DAYS", "days must be a positive integer");
   }
 
-  const stubKit = {
+  const extraction = await extractRoleAndRequirements(kitCase.jd);
+  const questions: Kit["questions"] = [];
+  const flashcards: Kit["flashcards"] = [];
+
+  const coverage = checkCoverage(extraction.requirements, questions);
+  const schedule = allocateSchedule(
+    questions,
+    extraction.requirements,
+    kitCase.days,
+  );
+
+  const candidateKit = {
     source: {
       company: "",
       company_url: kitCase.company_url,
-      role: "",
+      role: extraction.title,
       location: "",
       jd_chars: kitCase.jd.length,
       researched_at: new Date().toISOString(),
@@ -48,30 +55,21 @@ export async function generateKit(kitCase: KitCase): Promise<Kit> {
       sources: [],
     },
     role: {
-      title: "",
-      seniority: "",
-      responsibilities: [],
-      requirements: [],
+      title: extraction.title,
+      seniority: extraction.seniority,
+      responsibilities: extraction.responsibilities,
+      requirements: extraction.requirements,
     },
-    questions: [],
-    flashcards: [],
-    schedule: {
-      days_available: kitCase.days,
-      //Each day is empty, no questions yet to assign.
-      days: Array.from({ length: kitCase.days }, (_, i) => ({
-        day: i + 1,
-        focus: "",
-        question_ids: [],
-        minutes: 0,
-      })),
-    },
+    questions,
+    flashcards,
+    schedule,
     coverage: {
-      uncovered_requirement_ids: [],
+      uncovered_requirement_ids: coverage.uncovered_requirement_ids,
       passes: 0,
     },
   };
 
-  const result = validateKit(stubKit);
+  const result = validateKit(candidateKit);
   if (!result.ok) {
     // If the stub itself doesn't pass, something is wrong with the schema or the stub generation logic,
     // not the input. This is an internal error.
