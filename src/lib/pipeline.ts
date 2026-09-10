@@ -1,6 +1,7 @@
 import { Kit, validateKit } from "./schema";
 import { PipelineError } from "./errors";
 import { extractRoleAndRequirements } from "./extractRequirements";
+import { crawlCompanySite } from "./crawler";
 import { checkCoverage } from "./coverage";
 import { allocateSchedule } from "./schedule";
 
@@ -28,7 +29,12 @@ export async function generateKit(kitCase: KitCase): Promise<Kit> {
     throw new PipelineError("INVALID_DAYS", "days must be a positive integer");
   }
 
-  const extraction = await extractRoleAndRequirements(kitCase.jd);
+  // Crawl and extract in parallel, since they are independent and both can be slow.
+  const [extraction, crawlResult] = await Promise.all([
+    extractRoleAndRequirements(kitCase.jd),
+    crawlCompanySite(kitCase.company_url),
+  ]);
+
   const questions: Kit["questions"] = [];
   const flashcards: Kit["flashcards"] = [];
 
@@ -47,7 +53,7 @@ export async function generateKit(kitCase: KitCase): Promise<Kit> {
       location: "",
       jd_chars: kitCase.jd.length,
       researched_at: new Date().toISOString(),
-      pages_used: [],
+      pages_used: crawlResult.pagesUsed,
     },
     company_brief: {
       summary: "",
@@ -71,8 +77,7 @@ export async function generateKit(kitCase: KitCase): Promise<Kit> {
 
   const result = validateKit(candidateKit);
   if (!result.ok) {
-    // If the stub itself doesn't pass, something is wrong with the schema or the stub generation logic,
-    // not the input. This is an internal error.
+    // This is a developer error, not a user error, so we throw an exception rather than
     throw new PipelineError(
       "INTERNAL_SCHEMA_MISMATCH",
       `Generated kit failed validation: ${result.errors.join("; ")}`,
