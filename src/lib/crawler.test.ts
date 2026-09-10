@@ -15,6 +15,8 @@ describe("scoreLink", () => {
   });
 
   it("scores a non-obvious hiring page path via anchor text, proving it isn't a fixed path list", () => {
+    // This is the exact scenario the brief describes: the path itself
+    // gives no clue, only the surrounding context does.
     expect(scoreLink("/life-at-acme", "Life at Acme")).toBeGreaterThan(0);
   });
 
@@ -38,7 +40,7 @@ describe("crawlCompanySite (integration, against a real local server)", () => {
   });
 
   it("finds the buried hiring page without any hardcoded path", async () => {
-    const result = await crawlCompanySite(`http://localhost:${PORT}/`);
+    const result = await crawlCompanySite(`http://127.0.0.1:${PORT}/`);
     expect(result.pagesUsed.some((u) => u.includes("/life-at-acme"))).toBe(
       true,
     );
@@ -47,25 +49,25 @@ describe("crawlCompanySite (integration, against a real local server)", () => {
   });
 
   it("captures company description text from the homepage", async () => {
-    const result = await crawlCompanySite(`http://localhost:${PORT}/`);
+    const result = await crawlCompanySite(`http://127.0.0.1:${PORT}/`);
     expect(result.companyText).toContain("developer tools");
   });
 
   it("respects robots.txt and never fetches a disallowed path", async () => {
-    const result = await crawlCompanySite(`http://localhost:${PORT}/`);
+    const result = await crawlCompanySite(`http://127.0.0.1:${PORT}/`);
     expect(result.pagesUsed.some((u) => u.includes("/contact"))).toBe(false);
   });
 
   it("reports an unreachable homepage as a recorded failure, not a thrown error", async () => {
     const result = await crawlCompanySite(
-      `http://localhost:${PORT}/nonexistent-path-that-404s`,
+      `http://127.0.0.1:${PORT}/nonexistent-path-that-404s`,
     );
     expect(result.failures.length).toBeGreaterThan(0);
     expect(result.pagesUsed).toEqual([]);
   });
 
   it("reports an entirely unreachable host as a recorded failure, not a thrown error", async () => {
-    const result = await crawlCompanySite("http://localhost:1/"); // nothing listens here
+    const result = await crawlCompanySite("http://127.0.0.1:1/"); // nothing listens here
     expect(result.failures.length).toBeGreaterThan(0);
     expect(result.companyText).toBe("");
   });
