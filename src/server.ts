@@ -5,6 +5,8 @@ import mongoose from "mongoose";
 import session from "express-session";
 import MongoStore from "connect-mongo";
 import authRoutes from "./routes/auth";
+import kitRoutes from "./routes/kits";
+import kitBuilderRoutes from "./routes/kitBuilder";
 
 const app = express();
 
@@ -56,6 +58,8 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/kits", kitRoutes);
+app.use("/api/kits", kitBuilderRoutes);
 
 const PORT = process.env.PORT || 4000;
 
