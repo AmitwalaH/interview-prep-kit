@@ -13,6 +13,7 @@ export interface KitDocument extends Document {
   };
   status: KitStatus;
   kit: unknown | null; // validated against KitSchema (Appendix A) before ever being saved here
+  research: { companyText: string; hiringProcessText: string } | null;
   error: { code: string; message: string } | null;
   createdAt: Date;
   updatedAt: Date;
@@ -39,6 +40,16 @@ const kitSchemaDb = new Schema<KitDocument>(
       required: true,
     },
     kit: { type: Schema.Types.Mixed, default: null },
+    // Sibling to `kit`, outside the Appendix A contract entirely, caches
+    // the crawler's raw text so regenerating the company brief or adding
+    // more questions later doesn't require re-crawling the site.
+    research: {
+      type: new Schema(
+        { companyText: String, hiringProcessText: String },
+        { _id: false },
+      ),
+      default: null,
+    },
     error: {
       type: new Schema({ code: String, message: String }, { _id: false }),
       default: null,
@@ -50,6 +61,9 @@ const kitSchemaDb = new Schema<KitDocument>(
 // Defense in depth against the "same description and company submitted twice"
 kitSchemaDb.index({ ownerId: 1, "input.inputHash": 1 }, { unique: true });
 
+/**
+ * Deterministic hash of the inputs that actually affect generation.
+ */
 export function computeInputHash(
   jd: string,
   companyUrl: string,

@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+// Schemas for the structured data that flows through the pipeline. The brief
+// calls out the shape of the kit in Appendix A, and the schemas here are a
+// direct implementation of that shape.
 
 const RequirementSchema = z.object({
   id: z.string().min(1),
@@ -20,6 +23,9 @@ const QuestionSchema = z.object({
   prompt: z.string().min(1),
   answer_outline: z.string(),
   difficulty: z.number().int().min(1).max(3),
+  // Extension: status of the question, used to track whether a user has
+  // edited it or pinned it to the schedule
+  status: z.enum(["generated", "edited", "pinned"]).default("generated"),
 });
 
 const FlashcardSchema = z.object({
@@ -27,6 +33,17 @@ const FlashcardSchema = z.object({
   front: z.string().min(1),
   back: z.string().min(1),
   requirement_ids: z.array(z.string().min(1)),
+  status: z.enum(["generated", "edited", "pinned"]).default("generated"),
+  // Extension: source_question_id is used to link a flashcard back to the
+  // question that generated it, if any. 
+  source_question_id: z.string().nullable().default(null),
+  practice: z
+    .object({
+      confidence: z.number().int().min(1).max(5).nullable(),
+      times_practiced: z.number().int().min(0),
+      last_practiced_at: z.string().nullable(),
+    })
+    .default({ confidence: null, times_practiced: 0, last_practiced_at: null }),
 });
 
 const ScheduleDaySchema = z.object({
@@ -69,7 +86,9 @@ export const KitSchema = z
       passes: z.number().int().min(0),
     }),
   })
-  // Cross-field rules the brief calls out explicitly.
+  // Cross-field rules the brief calls out explicitly: ids must be stable
+  // and internally consistent. Zod's plain shape check can't see across
+  // fields, so this runs after the shape passes.
   .superRefine((kit, ctx) => {
     const requirementIds = new Set(kit.role.requirements.map((r) => r.id));
     const questionIds = new Set(kit.questions.map((q) => q.id));

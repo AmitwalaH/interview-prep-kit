@@ -64,15 +64,15 @@ describe("generateKit (integration: real crawler + real fixture server, mocked L
 
   it("wires real crawl results into the final kit's pages_used", async () => {
     const { generateKit } = await import("./pipeline");
-    const kit = await generateKit({
+    const { kit } = await generateKit({
       id: "test-case",
       jd: "Senior Backend Engineer, 5+ years Node.js",
       company_url: `http://127.0.0.1:${PORT}/`,
       days: 5,
     });
 
-    // Proves this came from the REAL crawler, not a stub, the fixture's
-    // homepage and the buried hiring page it discovered via link scoring.
+    // The fixture site has a link to a page on life-at-acme.com, 
+    // so the crawler should have followed it and included it in pages_used.
     expect(kit.source.pages_used.some((u) => u.includes(`:${PORT}/`))).toBe(
       true,
     );
@@ -83,7 +83,7 @@ describe("generateKit (integration: real crawler + real fixture server, mocked L
 
   it("wires real extraction results into role.requirements", async () => {
     const { generateKit } = await import("./pipeline");
-    const kit = await generateKit({
+    const { kit } = await generateKit({
       id: "test-case-2",
       jd: "Senior Backend Engineer, 5+ years Node.js",
       company_url: `http://127.0.0.1:${PORT}/`,
@@ -96,7 +96,7 @@ describe("generateKit (integration: real crawler + real fixture server, mocked L
 
   it("generates real questions that cover the extracted requirement", async () => {
     const { generateKit } = await import("./pipeline");
-    const kit = await generateKit({
+    const { kit } = await generateKit({
       id: "test-case-3",
       jd: "Senior Backend Engineer, 5+ years Node.js",
       company_url: `http://127.0.0.1:${PORT}/`,
@@ -110,7 +110,7 @@ describe("generateKit (integration: real crawler + real fixture server, mocked L
 
   it("includes a company-fit question, since the fixture site has real company text", async () => {
     const { generateKit } = await import("./pipeline");
-    const kit = await generateKit({
+    const { kit } = await generateKit({
       id: "test-case-5",
       jd: "Senior Backend Engineer, 5+ years Node.js",
       company_url: `http://127.0.0.1:${PORT}/`,
@@ -122,7 +122,7 @@ describe("generateKit (integration: real crawler + real fixture server, mocked L
 
   it("populates the company brief from real crawled text", async () => {
     const { generateKit } = await import("./pipeline");
-    const kit = await generateKit({
+    const { kit } = await generateKit({
       id: "test-case-6",
       jd: "Senior Backend Engineer, 5+ years Node.js",
       company_url: `http://127.0.0.1:${PORT}/`,
@@ -134,7 +134,7 @@ describe("generateKit (integration: real crawler + real fixture server, mocked L
 
   it("allocates the real generated questions into the schedule", async () => {
     const { generateKit } = await import("./pipeline");
-    const kit = await generateKit({
+    const { kit } = await generateKit({
       id: "test-case-7",
       jd: "Senior Backend Engineer, 5+ years Node.js",
       company_url: `http://127.0.0.1:${PORT}/`,
@@ -149,7 +149,7 @@ describe("generateKit (integration: real crawler + real fixture server, mocked L
 
   it("still produces a valid kit, with no company-fit questions and an honest empty brief, when the crawl target is entirely unreachable", async () => {
     const { generateKit } = await import("./pipeline");
-    const kit = await generateKit({
+    const { kit } = await generateKit({
       id: "test-case-4",
       jd: "Senior Backend Engineer, 5+ years Node.js",
       company_url: "http://127.0.0.1:1/", // nothing listens here

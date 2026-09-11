@@ -18,6 +18,7 @@ function q(
     prompt: `question ${id}`,
     answer_outline: "",
     difficulty,
+    status: "generated",
   };
 }
 

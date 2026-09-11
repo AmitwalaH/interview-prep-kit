@@ -166,7 +166,7 @@ export function resetIdCounter() {
   flashcardIdCounter = 0;
 }
 
-// Generates questions and flashcards for a single category, 
+// Generates questions and flashcards for a single category,
 // returning the structured objects
 export async function generateQuestionsAndFlashcards(
   category: QuestionCategory,
@@ -199,6 +199,7 @@ export async function generateQuestionsAndFlashcards(
       prompt: item.prompt,
       answer_outline: item.answer_outline,
       difficulty: item.difficulty,
+      status: "generated",
     });
 
     flashcards.push({
@@ -206,6 +207,13 @@ export async function generateQuestionsAndFlashcards(
       front: item.flashcard_front,
       back: item.flashcard_back,
       requirement_ids: requirementIds,
+      status: "generated",
+      source_question_id: questionId,
+      practice: {
+        confidence: null,
+        times_practiced: 0,
+        last_practiced_at: null,
+      },
     });
   }
 

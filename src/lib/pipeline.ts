@@ -20,11 +20,16 @@ export interface KitCase {
 
 export { PipelineError };
 
-/**
- * Produces one kit for one case. This is the ONLY pipeline implementation
- * in the codebase.
- */
-export async function generateKit(kitCase: KitCase): Promise<Kit> {
+export interface GenerateKitResult {
+  kit: Kit;
+  // The raw text the crawler found on the company site, used to ground
+  research: { companyText: string; hiringProcessText: string };
+}
+
+// Generates a complete Kit from a job description, company URL, and number of days.
+export async function generateKit(
+  kitCase: KitCase,
+): Promise<GenerateKitResult> {
   if (!kitCase.jd || kitCase.jd.trim().length === 0) {
     throw new PipelineError(
       "EMPTY_JOB_DESCRIPTION",
@@ -149,5 +154,11 @@ export async function generateKit(kitCase: KitCase): Promise<Kit> {
     );
   }
 
-  return result.kit;
+  return {
+    kit: result.kit,
+    research: {
+      companyText: crawlResult.companyText,
+      hiringProcessText: crawlResult.hiringProcessText,
+    },
+  };
 }

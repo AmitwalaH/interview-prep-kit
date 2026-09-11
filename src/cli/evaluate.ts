@@ -39,7 +39,7 @@ async function main() {
   // Sequential for now, deliberate choice while the pipeline is a stub.
   for (const kitCase of cases) {
     try {
-      const kit = await generateKit(kitCase);
+      const { kit } = await generateKit(kitCase);
       results.push({ id: kitCase.id, status: "ok", kit, error: null });
     } catch (err) {
       const pipelineErr =
