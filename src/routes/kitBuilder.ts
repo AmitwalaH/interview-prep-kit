@@ -18,6 +18,7 @@ import { generateQuestionsAndFlashcards } from "../lib/generateQuestions";
 import { generateCompanyBrief } from "../lib/generateCompanyBrief";
 import { allocateSchedule } from "../lib/schedule";
 import { mergeCategoryRegeneration, pruneScheduleReferences } from "../lib/regenerateMerge";
+import { orderForPracticeSession, practiceCoverage } from "../lib/practiceOrdering";
 import { PipelineError } from "../lib/errors";
 
 const router = Router();
@@ -345,5 +346,18 @@ router.post(
   })
 );
 
+router.get(
+  "/:id/practice/next",
+  asyncHandler(async (req, res) => {
+    const { doc, error } = await loadEditableKit(req.params.id, req.session.userId!);
+    if (error) return sendLoadError(res, error);
+
+    const kit = doc!.kit as Kit;
+    res.json({
+      coverage: practiceCoverage(kit.flashcards),
+      order: orderForPracticeSession(kit.flashcards),
+    });
+  })
+);
 
 export default router;
