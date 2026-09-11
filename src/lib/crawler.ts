@@ -38,6 +38,7 @@ function sleep(ms: number) {
 export interface CrawlResult {
   companyText: string;
   hiringProcessText: string;
+  companyName: string;
   pagesUsed: string[];
   failures: { url: string; reason: string }[];
 }
@@ -45,13 +46,23 @@ export interface CrawlResult {
 const EMPTY_RESULT: Omit<CrawlResult, "failures"> = {
   companyText: "",
   hiringProcessText: "",
+  companyName: "",
   pagesUsed: [],
 };
 
-/**
- * Crawls a company's site starting from its homepage, ranks outbound
- * links by relevance to "how they hire," and fetches the top candidates.
- */
+// The company name is derived from the page title, 
+// which is often in the form "Company Name | Careers" or "Company Name - Home". 
+// This function extracts the first segment before any common separators.
+export function deriveCompanyName(pageTitle: string): string {
+  if (!pageTitle) return "";
+  const firstSegment = pageTitle.split(/[|\u2013\u2014:-]/)[0];
+  return firstSegment.trim();
+}
+
+// Crawls the company's website starting from the provided URL, 
+// looking for relevant pages that describe the hiring process. 
+// It scores links based on keywords and fetches the top candidates, 
+// returning the combined text and any failures encountered.
 export async function crawlCompanySite(
   companyUrl: string,
 ): Promise<CrawlResult> {
@@ -117,6 +128,7 @@ export async function crawlCompanySite(
   return {
     companyText: homepage.text,
     hiringProcessText,
+    companyName: deriveCompanyName(homepage.pageTitle),
     pagesUsed,
     failures,
   };

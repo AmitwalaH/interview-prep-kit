@@ -147,6 +147,46 @@ describe("generateKit (integration: real crawler + real fixture server, mocked L
     expect(scheduledQuestionIds.length).toBe(kit.questions.length);
   });
 
+  it("includes public discussion search results in pages_used when Firecrawl returns results", async () => {
+    const originalFetch = global.fetch;
+    const originalKey = process.env.FIRECRAWL_API_KEY;
+    process.env.FIRECRAWL_API_KEY = "fc-test-key";
+
+    // Only intercept calls to Firecrawl's endpoint, everything else (the
+    // fixture server, and the mocked LLM module) is untouched.
+    global.fetch = vi.fn().mockImplementation((url: any, ...args: any[]) => {
+      if (typeof url === "string" && url.includes("firecrawl.dev")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            data: [
+              {
+                title: "Acme interview process",
+                description: "Take-home and a system design round.",
+                url: "https://reddit.com/r/acme",
+              },
+            ],
+          }),
+        });
+      }
+      return (originalFetch as any)(url, ...args);
+    }) as any;
+
+    try {
+      const { generateKit } = await import("./pipeline");
+      const { kit } = await generateKit({
+        id: "test-case-8",
+        jd: "Senior Backend Engineer, 5+ years Node.js",
+        company_url: `http://127.0.0.1:${PORT}/`,
+        days: 5,
+      });
+      expect(kit.source.pages_used).toContain("https://reddit.com/r/acme");
+    } finally {
+      global.fetch = originalFetch;
+      process.env.FIRECRAWL_API_KEY = originalKey;
+    }
+  });
+
   it("still produces a valid kit, with no company-fit questions and an honest empty brief, when the crawl target is entirely unreachable", async () => {
     const { generateKit } = await import("./pipeline");
     const { kit } = await generateKit({

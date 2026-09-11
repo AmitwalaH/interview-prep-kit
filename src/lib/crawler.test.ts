@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { scoreLink, crawlCompanySite } from "./crawler";
+import { scoreLink, crawlCompanySite, deriveCompanyName } from "./crawler";
 
 const {
   startFixtureServer,
@@ -27,6 +27,24 @@ describe("scoreLink", () => {
   });
 });
 
+describe("deriveCompanyName", () => {
+  it("takes the first segment of a pipe-separated title", () => {
+    expect(deriveCompanyName("Acme Corp | Careers")).toBe("Acme Corp");
+  });
+
+  it("takes the first segment of a dash-separated title", () => {
+    expect(deriveCompanyName("Acme Corp - Home")).toBe("Acme Corp");
+  });
+
+  it("returns the whole title if there's no separator", () => {
+    expect(deriveCompanyName("Acme Corp")).toBe("Acme Corp");
+  });
+
+  it("returns empty string for an empty title", () => {
+    expect(deriveCompanyName("")).toBe("");
+  });
+});
+
 describe("crawlCompanySite (integration, against a real local server)", () => {
   const PORT = 8098;
   let server: any;
@@ -46,6 +64,7 @@ describe("crawlCompanySite (integration, against a real local server)", () => {
     );
     expect(result.hiringProcessText).toContain("recruiter screen");
     expect(result.hiringProcessText).toContain("system design");
+    expect(result.companyName).toBe("Acme Corp");
   });
 
   it("captures company description text from the homepage", async () => {

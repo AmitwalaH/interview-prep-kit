@@ -9,6 +9,7 @@ export interface FetchedPage {
   url: string;
   text: string;
   links: { href: string; text: string }[];
+  pageTitle: string;
 }
 
 /**
@@ -58,6 +59,7 @@ export async function fetchPage(url: string): Promise<FetchedPage | null> {
 function extractCleanTextAndLinks(html: string, baseUrl: string): FetchedPage {
   const $ = cheerio.load(html);
   const base = new URL(baseUrl);
+  const pageTitle = $("title").first().text().trim();
 
   // Extracting links first, before stripping noise,
   // so we don't miss any links that are in nav/footer/script.
@@ -88,5 +90,5 @@ function extractCleanTextAndLinks(html: string, baseUrl: string): FetchedPage {
     .trim()
     .slice(0, MAX_CLEANED_TEXT_CHARS);
 
-  return { url: baseUrl, text, links };
+  return { url: baseUrl, text, links, pageTitle };
 }

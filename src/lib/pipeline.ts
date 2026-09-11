@@ -10,6 +10,7 @@ import {
   resetIdCounter,
 } from "./generateQuestions";
 import { generateCompanyBrief } from "./generateCompanyBrief";
+import { searchPublicDiscussion } from "./publicDiscoverySearch";
 
 export interface KitCase {
   id: string;
@@ -51,17 +52,26 @@ export async function generateKit(
   ]);
 
   // Generates questions and flashcards for a set of requirements, returning the structured objects
+  const publicDiscussion = await searchPublicDiscussion(
+    crawlResult.companyName,
+  );
+  const hiringContext = [crawlResult.hiringProcessText, publicDiscussion.text]
+    .filter(Boolean)
+    .join("\n\n");
+  const allPagesUsed = [...crawlResult.pagesUsed, ...publicDiscussion.sources];
+
+ // Generates questions and flashcards for a set of requirements, returning the structured objects
   async function runGenerationPass(
     requirements: Requirement[],
   ): Promise<{ questions: Question[]; flashcards: Flashcard[] }> {
-    const plans = planCategories(requirements, crawlResult.hiringProcessText);
+    const plans = planCategories(requirements, hiringContext);
     const questions: Question[] = [];
     const flashcards: Flashcard[] = [];
     for (const plan of plans) {
       const result = await generateQuestionsAndFlashcards(
         plan.category,
         plan.requirements,
-        crawlResult.hiringProcessText,
+        hiringContext,
       );
       questions.push(...result.questions);
       flashcards.push(...result.flashcards);
@@ -122,12 +132,12 @@ export async function generateKit(
       location: "",
       jd_chars: kitCase.jd.length,
       researched_at: new Date().toISOString(),
-      pages_used: crawlResult.pagesUsed,
+      pages_used: allPagesUsed,
     },
     company_brief: {
       summary: companyBrief.summary,
       what_they_do: companyBrief.what_they_do,
-      sources: crawlResult.pagesUsed,
+      sources: allPagesUsed,
     },
     role: {
       title: extraction.title,
@@ -158,7 +168,10 @@ export async function generateKit(
     kit: result.kit,
     research: {
       companyText: crawlResult.companyText,
-      hiringProcessText: crawlResult.hiringProcessText,
+      // Cached as the already-combined context (crawled hiring page text +
+      // public discussion results), so a later regeneration reuses this
+      // without needing a fresh Firecrawl search.
+      hiringProcessText: hiringContext,
     },
   };
 }
