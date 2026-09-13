@@ -1,6 +1,6 @@
 import { Question, Flashcard, ScheduleDay } from "./schema";
 import { QuestionCategory } from "./categoryPlanner";
-import { MINUTES_BY_DIFFICULTY } from "./schedule";
+import { MINUTES_BY_DIFFICULTY, focusForDay } from "./schedule";
 
 export interface CategoryMergeResult {
   questions: Question[];
@@ -53,10 +53,20 @@ export function pruneScheduleReferences(
 
   return days.map((day) => {
     const survivingIds = day.question_ids.filter((id) => questionById.has(id));
-    const minutes = survivingIds.reduce((sum, id) => {
-      const q = questionById.get(id)!;
-      return sum + MINUTES_BY_DIFFICULTY[q.difficulty as 1 | 2 | 3];
-    }, 0);
-    return { ...day, question_ids: survivingIds, minutes };
+    const survivingQuestions = survivingIds.map((id) => questionById.get(id)!);
+    const minutes = survivingQuestions.reduce(
+      (sum, q) => sum + MINUTES_BY_DIFFICULTY[q.difficulty as 1 | 2 | 3],
+      0,
+    );
+    // Recompute focus from what's ACTUALLY left, not the stale label from
+    // before pruning — otherwise a day can end up claiming "technical"
+    // while genuinely containing zero questions, which is exactly the
+    // kind of dishonest state the schedule is supposed to avoid.
+    return {
+      ...day,
+      question_ids: survivingIds,
+      minutes,
+      focus: focusForDay(survivingQuestions),
+    };
   });
 }

@@ -1,6 +1,10 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import { KitDocument } from "@/lib/types";
 import { StatusBadge } from "./StatusBadge";
+import { Button } from "./ui/Button";
 
 function hostnameOf(url: string): string {
   try {
@@ -20,7 +24,27 @@ function relativeTime(iso: string): string {
   return `${Math.round(hours / 24)}d ago`;
 }
 
-export function KitCard({ kit }: { kit: KitDocument }) {
+export function KitCard({
+  kit,
+  onDelete,
+}: {
+  kit: KitDocument;
+  onDelete: (id: string) => Promise<void>;
+}) {
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete(e: React.MouseEvent) {
+    e.preventDefault(); // don't navigate via the wrapping Link
+    e.stopPropagation();
+    if (!window.confirm("Delete this kit? This can't be undone.")) return;
+    setDeleting(true);
+    try {
+      await onDelete(kit.id);
+    } catch {
+      setDeleting(false);
+    }
+  }
+
   return (
     <Link
       href={`/kits/${kit.id}`}
@@ -28,7 +52,9 @@ export function KitCard({ kit }: { kit: KitDocument }) {
     >
       <div className="flex min-w-0 flex-1 items-center gap-4">
         <div className="min-w-0">
-          <p className="truncate font-heading text-sm font-medium text-ink">{hostnameOf(kit.input.company_url)}</p>
+          <p className="truncate font-heading text-sm font-medium text-ink">
+            {hostnameOf(kit.input.company_url)}
+          </p>
           <p className="text-xs text-ink-muted">
             {kit.input.days} day{kit.input.days === 1 ? "" : "s"} to prepare
           </p>
@@ -36,7 +62,17 @@ export function KitCard({ kit }: { kit: KitDocument }) {
       </div>
       <div className="flex shrink-0 items-center gap-3">
         <StatusBadge status={kit.status} />
-        <span className="hidden text-xs text-ink-faint sm:inline">{relativeTime(kit.createdAt)}</span>
+        <span className="hidden text-xs text-ink-faint sm:inline">
+          {relativeTime(kit.createdAt)}
+        </span>
+        <Button
+          variant="ghost"
+          className="px-2 py-1 text-xs text-coral hover:text-coral"
+          onClick={handleDelete}
+          loading={deleting}
+        >
+          Delete
+        </Button>
       </div>
     </Link>
   );

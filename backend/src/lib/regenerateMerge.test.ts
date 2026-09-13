@@ -214,4 +214,16 @@ describe("pruneScheduleReferences", () => {
     expect(result[0].question_ids).toEqual([]);
     expect(result[0].minutes).toBe(0);
   });
+
+  it("recomputes an honest empty-day message instead of leaving a stale category label (the exact bug this fixes)", () => {
+    // Before this fix: a day could end up with focus:"technical" and
+    // minutes:0 simultaneously — a genuinely misleading combination —
+    // because pruning updated question_ids/minutes but never touched focus.
+    const days = [
+      { day: 1, focus: "technical", question_ids: ["q1"], minutes: 15 },
+    ];
+    const result = pruneScheduleReferences(days, []); // the question was removed entirely
+    expect(result[0].focus).toMatch(/insufficient content/i);
+    expect(result[0].focus).not.toBe("technical");
+  });
 });

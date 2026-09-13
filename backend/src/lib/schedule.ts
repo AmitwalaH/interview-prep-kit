@@ -26,7 +26,7 @@ function priorityRank(
 ): number {
   // A question can reference multiple requirements with mixed priority.
   // If ANY linked requirement is a must-have, the question is treated as
-  // must-have for ordering purposes, we'd rather over-prioritize than
+  // must-have for ordering purposes — we'd rather over-prioritize than
   // bury a must-have question behind "nice to have" material.
   const isMust = question.requirement_ids.some(
     (rid) => requirementPriority.get(rid) === "must",
@@ -34,12 +34,12 @@ function priorityRank(
   return isMust ? 0 : 1;
 }
 
-function focusForDay(dayQuestions: Question[]): string {
+export function focusForDay(dayQuestions: Question[]): string {
   if (dayQuestions.length === 0) {
     // Honest, not fabricated: this happens when the user requests more
     // days than there is material to fill (e.g. a 60-day schedule against
     // a thin job description). Reporting it plainly beats inventing filler.
-    return "No material scheduled for this day, insufficient content generated";
+    return "No material scheduled for this day — insufficient content generated";
   }
   const categories = Array.from(new Set(dayQuestions.map((q) => q.category)));
   return categories.join(", ");
