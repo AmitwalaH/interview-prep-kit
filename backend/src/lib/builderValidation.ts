@@ -7,6 +7,10 @@ export const EditQuestionSchema = z.object({
   category: z
     .enum(["technical", "behavioural", "system-design", "company-fit"])
     .optional(),
+  // Lets the client explicitly pin/unpin without going through a content
+  // edit. Any other field present still promotes status to "edited",
+  // handled in the route, not here.
+  status: z.enum(["edited", "pinned"]).optional(),
 });
 
 export const AddQuestionSchema = z.object({
@@ -25,6 +29,7 @@ export const AddQuestionSchema = z.object({
 export const EditFlashcardSchema = z.object({
   front: z.string().min(1).optional(),
   back: z.string().min(1).optional(),
+  status: z.enum(["edited", "pinned"]).optional(),
 });
 
 export const AddFlashcardSchema = z.object({

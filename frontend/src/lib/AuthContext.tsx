@@ -23,7 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     apiFetch<User>("/api/auth/me")
       .then((u) => setUser(u))
-      .catch(() => setUser(null)) // 401 just means signed out — not an error to surface
+      .catch(() => setUser(null)) // 401 just means signed out, not an error to surface
       .finally(() => setLoading(false));
   }, []);
 

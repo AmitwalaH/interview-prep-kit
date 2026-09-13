@@ -152,7 +152,7 @@ function BatchUploadForm({ onCreated }: { onCreated: () => void }) {
     if (!items) return;
     setSubmitting(true);
 
-    // Sequential, not parallel — mirrors the backend's own rate-limit
+    // Sequential, not parallel, mirrors the backend's own rate-limit
     // discipline. Firing N requests at once would trigger N simultaneous
     // generation runs, each hammering the same free-tier LLM quota.
     for (let i = 0; i < items.length; i++) {

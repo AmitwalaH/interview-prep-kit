@@ -65,7 +65,7 @@ export default function DashboardPage() {
 
         {state === "loaded" && kits.length === 0 && (
           <div className="rounded-lg border border-dashed border-border px-4 py-12 text-center">
-            <p className="text-sm text-ink-muted">No kits yet — paste a job description to build your first one.</p>
+            <p className="text-sm text-ink-muted">No kits yet, paste a job description to build your first one.</p>
             <Link href="/kits/new">
               <Button className="mt-4">Create your first kit</Button>
             </Link>

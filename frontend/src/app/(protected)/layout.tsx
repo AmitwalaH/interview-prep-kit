@@ -10,7 +10,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   const router = useRouter();
 
   useEffect(() => {
-    // Only redirect once the initial /me check has actually resolved —
+    // Only redirect once the initial /me check has actually resolved,
     // redirecting while still loading would bounce a signed-in user on
     // every page refresh, since `user` starts null before the check runs.
     if (!loading && !user) {

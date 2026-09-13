@@ -74,7 +74,7 @@ export default function KitDetailPage() {
     const all = doc.kit.questions;
 
     // Reordering is scoped visually to one category, but the reorder
-    // endpoint takes the FULL kit ordering — so find this question's
+    // endpoint takes the FULL kit ordering, so find this question's
     // neighbors within its category, then swap their positions within
     // the full array.
     const catPositions = all.map((q, i) => (q.category === question.category ? i : -1)).filter((i) => i !== -1);
@@ -133,7 +133,7 @@ export default function KitDetailPage() {
     setRegenerating(section);
     try {
       await kitApi.regenerateSection(kitId, section);
-      await load(); // full reload — regeneration can touch schedule references too
+      await load(); // full reload, regeneration can touch schedule references too
     } finally {
       setRegenerating(null);
     }
@@ -163,7 +163,7 @@ export default function KitDetailPage() {
             {doc.status === "pending" ? "Queued..." : "Researching and generating your kit..."}
           </p>
           <p className="mt-1 text-sm text-ink-muted">
-            This can take up to a couple of minutes — crawling the company site, then generating questions.
+            This can take up to a couple of minutes, crawling the company site, then generating questions.
           </p>
         </div>
       </div>

@@ -21,7 +21,7 @@ export function validateKitInput(input: Partial<KitFormInput>): string | null {
 /**
  * Parses a batch upload file for the "prepare for more than one role"
  * flow (Section 2). Accepts JSON (array of {jd, company_url, days}) since
- * that's unambiguous and matches the backend's own case shape — CSV would
+ * that's unambiguous and matches the backend's own case shape, CSV would
  * need escaping rules for multi-line job descriptions, which is exactly
  * the kind of fragile parsing not worth the time under this timebox.
  */

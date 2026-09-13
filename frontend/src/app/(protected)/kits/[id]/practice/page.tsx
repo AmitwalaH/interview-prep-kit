@@ -46,7 +46,7 @@ export default function PracticePage() {
       setIndex((i) => i + 1);
       setRevealed(false);
     } else {
-      // Deck complete — reload to get a freshly re-ordered session
+      // Deck complete, reload to get a freshly re-ordered session
       // (least-confident-first now reflects what was just practiced).
       load();
     }

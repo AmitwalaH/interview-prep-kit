@@ -49,7 +49,7 @@ export function QuestionCard({
     try {
       await onDelete();
     } catch {
-      setDeleting(false); // stayed in the list — let the user try again
+      setDeleting(false); // stayed in the list, let the user try again
     }
   }
 

@@ -13,7 +13,7 @@ interface ApiOptions {
 }
 
 /**
- * Every request includes credentials (the session cookie) — the backend
+ * Every request includes credentials (the session cookie), the backend
  * uses server-side sessions, not tokens, so there's no header to attach
  * manually. Errors are normalized into ApiError so calling code can
  * branch on `error.code` the same way regardless of which endpoint failed.
@@ -35,7 +35,7 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promi
     data = await response.json();
   } catch {
     // Some error responses (network-level failures caught by a proxy,
-    // for instance) may not be JSON at all — fall through to a generic error.
+    // for instance) may not be JSON at all, fall through to a generic error.
   }
 
   if (!response.ok) {
