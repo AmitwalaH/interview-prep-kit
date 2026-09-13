@@ -5,10 +5,7 @@ import { crawlCompanySite } from "./crawler";
 import { checkCoverage } from "./coverage";
 import { allocateSchedule } from "./schedule";
 import { planCategories, shouldGenerateCompanyFit } from "./categoryPlanner";
-import {
-  generateQuestionsAndFlashcards,
-  resetIdCounter,
-} from "./generateQuestions";
+import { generateQuestionsAndFlashcards } from "./generateQuestions";
 import { generateCompanyBrief } from "./generateCompanyBrief";
 import { searchPublicDiscussion } from "./publicDiscoverySearch";
 
@@ -23,7 +20,7 @@ export { PipelineError };
 
 export interface GenerateKitResult {
   kit: Kit;
-  // The raw text the crawler found on the company site, used to ground
+ // The raw text the crawler found on the company site, used to ground
   research: { companyText: string; hiringProcessText: string };
 }
 
@@ -41,17 +38,20 @@ export async function generateKit(
     throw new PipelineError("INVALID_DAYS", "days must be a positive integer");
   }
 
-  // Crawl slow enough that we don't want to do it for every test, so reset the ID counter
-  resetIdCounter();
-
-  // Kick off the two independent LLM workstreams: requirement extraction and company site crawl.
-  // Both are needed for the rest of the pipeline, so we can run them in parallel.
+  // Independent of each other, JD extraction only needs the pasted text,
+  // crawling only needs the company URL, so they run concurrently rather
+  // than one waiting on the other. Crawling never throws (see crawler.ts),
+  // so only extraction's rejection can end up here.
   const [extraction, crawlResult] = await Promise.all([
     extractRoleAndRequirements(kitCase.jd),
     crawlCompanySite(kitCase.company_url),
   ]);
 
-  // Generates questions and flashcards for a set of requirements, returning the structured objects
+  // Public discussion search depends on the company NAME, which only
+  // exists once the crawl has resolved, so this necessarily runs after
+  // the above, not alongside it. Never throws (same discipline as the
+  // crawler): a missing key, a failed search, or an unknown company name
+  // are all just "no discussion research available," not a failure.
   const publicDiscussion = await searchPublicDiscussion(
     crawlResult.companyName,
   );
@@ -63,6 +63,8 @@ export async function generateKit(
  // Generates questions and flashcards for a set of requirements, returning the structured objects
   async function runGenerationPass(
     requirements: Requirement[],
+    seedQuestions: Question[],
+    seedFlashcards: Flashcard[],
   ): Promise<{ questions: Question[]; flashcards: Flashcard[] }> {
     const plans = planCategories(requirements, hiringContext);
     const questions: Question[] = [];
@@ -72,6 +74,11 @@ export async function generateKit(
         plan.category,
         plan.requirements,
         hiringContext,
+        undefined,
+        {
+          questionIds: [...seedQuestions, ...questions].map((q) => q.id),
+          flashcardIds: [...seedFlashcards, ...flashcards].map((f) => f.id),
+        },
       );
       questions.push(...result.questions);
       flashcards.push(...result.flashcards);
@@ -79,10 +86,10 @@ export async function generateKit(
     return { questions, flashcards };
   }
 
-  async function maybeGenerateCompanyFit(): Promise<{
-    questions: Question[];
-    flashcards: Flashcard[];
-  }> {
+  async function maybeGenerateCompanyFit(
+    seedQuestions: Question[],
+    seedFlashcards: Flashcard[],
+  ): Promise<{ questions: Question[]; flashcards: Flashcard[] }> {
     if (!shouldGenerateCompanyFit(crawlResult.companyText)) {
       return { questions: [], flashcards: [] }; // nothing to ground it in, skip, don't fabricate
     }
@@ -90,28 +97,52 @@ export async function generateKit(
       "company-fit",
       [],
       crawlResult.companyText,
+      undefined,
+      {
+        questionIds: seedQuestions.map((q) => q.id),
+        flashcardIds: seedFlashcards.map((f) => f.id),
+      },
     );
   }
 
-  // Kick off the first pass of question generation, the optional company-fit generation,
-  // and the company brief generation in parallel.
-  const [firstPass, companyFit, companyBrief] = await Promise.all([
-    runGenerationPass(extraction.requirements),
-    maybeGenerateCompanyFit(),
+  // Company brief has zero id dependency, so it still runs fully
+  // concurrently. The main category pass and company-fit, however, are
+  // NOT run concurrently with each other anymore, company-fit needs to
+  // know the main pass's ids to avoid colliding with them, which is only
+  // possible once the main pass has actually finished.
+  const [combinedFirstPass, companyBrief] = await Promise.all([
+    (async () => {
+      const mainPass = await runGenerationPass(extraction.requirements, [], []);
+      const companyFit = await maybeGenerateCompanyFit(
+        mainPass.questions,
+        mainPass.flashcards,
+      );
+      return {
+        questions: [...mainPass.questions, ...companyFit.questions],
+        flashcards: [...mainPass.flashcards, ...companyFit.flashcards],
+      };
+    })(),
     generateCompanyBrief(crawlResult.companyText),
   ]);
 
-  let questions = [...firstPass.questions, ...companyFit.questions];
-  let flashcards = [...firstPass.flashcards, ...companyFit.flashcards];
+  let questions = combinedFirstPass.questions;
+  let flashcards = combinedFirstPass.flashcards;
   let passes = 1;
   let coverage = checkCoverage(extraction.requirements, questions);
 
-  // If the first pass didn't cover all requirements, do a second pass to fill in the gaps.
+  // The second pass (Section 4): act on gaps once, then stop. Bounded to
+  // exactly one extra pass, enough to catch what the first attempt
+  // missed, without risking an unbounded retry loop against a
+  // rate-limited provider if the model keeps missing the same gap.
   if (coverage.uncovered_requirement_ids.length > 0) {
     const gapRequirements = extraction.requirements.filter((r) =>
       coverage.uncovered_requirement_ids.includes(r.id),
     );
-    const gapFill = await runGenerationPass(gapRequirements);
+    const gapFill = await runGenerationPass(
+      gapRequirements,
+      questions,
+      flashcards,
+    );
     questions = [...questions, ...gapFill.questions];
     flashcards = [...flashcards, ...gapFill.flashcards];
     passes = 2;
@@ -157,7 +188,8 @@ export async function generateKit(
   const result = validateKit(candidateKit);
   if (!result.ok) {
     // If the stub itself doesn't pass, something is wrong with the schema
-    // wiring, not the LLM output, so we throw an error rather than retrying.
+    // wiring, not with a particular case, this should never happen in
+    // normal operation, so it's a genuine internal error.
     throw new PipelineError(
       "INTERNAL_SCHEMA_MISMATCH",
       `Generated kit failed validation: ${result.errors.join("; ")}`,

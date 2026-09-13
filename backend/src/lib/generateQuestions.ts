@@ -146,33 +146,48 @@ export async function generateQuestionsForCategory(
   );
 }
 
-let questionIdCounter = 0;
-let flashcardIdCounter = 0;
-
-function nextQuestionId(): string {
-  questionIdCounter += 1;
-  return `q${questionIdCounter}`;
+/**
+ * Finds the highest numeric suffix already used among ids with the given
+ * prefix (e.g. "q7" -> 7), so new ids can start from the next number up.
+ * This replaces a module-level global counter, which had a real bug: it
+ * had no idea what ids a SPECIFIC kit already contained, so regenerating
+ * a category on one kit could produce ids colliding with ids already
+ * sitting in that kit's own data (the counter's value depended on
+ * whatever OTHER kit generation had last touched it, not this kit).
+ */
+function maxNumericSuffix(ids: string[], prefix: string): number {
+  let max = 0;
+  for (const id of ids) {
+    if (!id.startsWith(prefix)) continue;
+    const num = Number(id.slice(prefix.length));
+    if (Number.isInteger(num) && num > max) max = num;
+  }
+  return max;
 }
 
-function nextFlashcardId(): string {
-  flashcardIdCounter += 1;
-  return `f${flashcardIdCounter}`;
+export interface ExistingIds {
+  questionIds?: string[];
+  flashcardIds?: string[];
 }
 
-// Resets the question and flashcard ID counters to 0. This is useful for testing,
-// so that IDs are deterministic and don't depend on the order of test execution.
-export function resetIdCounter() {
-  questionIdCounter = 0;
-  flashcardIdCounter = 0;
-}
-
-// Generates questions and flashcards for a single category,
-// returning the structured objects
+/**
+ * Runs generation for one category and turns the raw model output into
+ * properly-shaped, id-assigned Questions and Flashcards. requirement_id
+ * references that don't match a real requirement id are dropped rather
+ * than trusted, a hallucinated id would otherwise corrupt the coverage
+ * check downstream.
+ *
+ * `existingIds` MUST be the full set of ids already present in the
+ * specific kit being worked on (empty for a brand-new kit; the kit's
+ * current questions/flashcards when regenerating one category), new ids
+ * are guaranteed unique relative to exactly that set, nothing more.
+ */
 export async function generateQuestionsAndFlashcards(
   category: QuestionCategory,
   requirements: Requirement[],
   companyContext: string,
   llmCall?: (prompt: string) => Promise<string>,
+  existingIds: ExistingIds = {},
 ): Promise<{ questions: Question[]; flashcards: Flashcard[] }> {
   const validIds = new Set(requirements.map((r) => r.id));
   const raw = await generateQuestionsForCategory(
@@ -182,11 +197,15 @@ export async function generateQuestionsAndFlashcards(
     llmCall,
   );
 
+  let qCounter = maxNumericSuffix(existingIds.questionIds ?? [], "q");
+  let fCounter = maxNumericSuffix(existingIds.flashcardIds ?? [], "f");
+
   const questions: Question[] = [];
   const flashcards: Flashcard[] = [];
 
   for (const item of raw) {
-    const questionId = nextQuestionId();
+    qCounter += 1;
+    const questionId = `q${qCounter}`;
     const requirementIds =
       item.requirement_id && validIds.has(item.requirement_id)
         ? [item.requirement_id]
@@ -202,8 +221,9 @@ export async function generateQuestionsAndFlashcards(
       status: "generated",
     });
 
+    fCounter += 1;
     flashcards.push({
-      id: nextFlashcardId(),
+      id: `f${fCounter}`,
       front: item.flashcard_front,
       back: item.flashcard_back,
       requirement_ids: requirementIds,

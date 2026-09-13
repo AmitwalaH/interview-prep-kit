@@ -1,8 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import {
-  generateQuestionsAndFlashcards,
-  resetIdCounter,
-} from "./generateQuestions";
+import { describe, it, expect, vi } from "vitest";
+import { generateQuestionsAndFlashcards } from "./generateQuestions";
 import { PipelineError } from "./errors";
 import { LLMError } from "./llmClient";
 import { Requirement } from "./schema";
@@ -24,12 +21,8 @@ function validResponse(requirementId: string | null = "r1") {
   ]);
 }
 
-beforeEach(() => {
-  resetIdCounter();
-});
-
 describe("generateQuestionsAndFlashcards", () => {
-  it("assigns sequential q/f ids and links to the correct requirement", async () => {
+  it("assigns ids starting from q1/f1 when no existing ids are given", async () => {
     const mockLlm = vi.fn().mockResolvedValue(validResponse("r1"));
     const { questions, flashcards } = await generateQuestionsAndFlashcards(
       "technical",
@@ -43,16 +36,49 @@ describe("generateQuestionsAndFlashcards", () => {
     expect(flashcards[0].requirement_ids).toEqual(["r1"]);
   });
 
-  it("continues id numbering across multiple calls rather than restarting", async () => {
+  it("continues numbering from the highest existing id when seeded explicitly", async () => {
     const mockLlm = vi.fn().mockResolvedValue(validResponse("r1"));
-    await generateQuestionsAndFlashcards("technical", [req("r1")], "", mockLlm);
     const second = await generateQuestionsAndFlashcards(
       "behavioural",
       [req("r1")],
       "",
       mockLlm,
+      {
+        questionIds: ["q1", "q2"],
+        flashcardIds: ["f1", "f2"],
+      },
     );
-    expect(second.questions[0].id).toBe("q2");
+    expect(second.questions[0].id).toBe("q3");
+    expect(second.flashcards[0].id).toBe("f3");
+  });
+
+  it("never collides with existing ids even when called with an EMPTY seed after other kits used higher numbers", async () => {
+    // This is the exact bug this design fixes: no shared global counter,
+    // so a call with no seed always starts at q1/f1 regardless of what
+    // any other kit or earlier call produced.
+    const mockLlm = vi.fn().mockResolvedValue(validResponse("r1"));
+    const result = await generateQuestionsAndFlashcards(
+      "technical",
+      [req("r1")],
+      "",
+      mockLlm,
+    );
+    expect(result.questions[0].id).toBe("q1");
+  });
+
+  it("ignores non-numeric suffixes (hand-added ids like q_ab12cd34) when computing the next number", async () => {
+    const mockLlm = vi.fn().mockResolvedValue(validResponse("r1"));
+    const result = await generateQuestionsAndFlashcards(
+      "technical",
+      [req("r1")],
+      "",
+      mockLlm,
+      {
+        questionIds: ["q_ab12cd34", "q5"],
+        flashcardIds: [],
+      },
+    );
+    expect(result.questions[0].id).toBe("q6");
   });
 
   it("drops a hallucinated requirement_id rather than trusting it", async () => {

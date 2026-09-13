@@ -399,10 +399,19 @@ router.post(
         ? doc!.research.companyText
         : doc!.research.hiringProcessText;
 
+    // Seed id generation from THIS kit's actual current ids — critical
+    // now that ids are no longer a global counter. Without this, a fresh
+    // regeneration could produce ids colliding with ones already sitting
+    // in this kit (including ones surviving the merge below).
     const fresh = await generateQuestionsAndFlashcards(
       section,
       targetRequirements,
       companyContext,
+      undefined,
+      {
+        questionIds: kit.questions.map((q) => q.id),
+        flashcardIds: kit.flashcards.map((f) => f.id),
+      },
     );
 
     const merged = mergeCategoryRegeneration(
