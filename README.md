@@ -47,8 +47,8 @@ Input/output shapes follow Appendix B of the assessment brief. Continues past in
 
 ### Deployed
 
-- **Frontend:** [FILL IN, Vercel URL]
-- **Backend:** [FILL IN, Render/Railway URL]
+- **Frontend:** https://interview-prep-kit-ten.vercel.app/
+- **Backend:** https://interview-prep-kit-backend-3d65.onrender.com/
 
 ## Architecture
 
@@ -103,7 +103,7 @@ Capped at exactly **2 passes**: one initial generation pass, then one targeted p
 
 ## Future Improvements
 
-- **Close the DNS-rebinding window:** `assertSafeUrl` currently validates DNS resolution once, then `fetchPage` re-resolves and connects separately, a malicious host could theoretically resolve to a safe IP at validation time and a private IP at fetch time. The fix is to pin the resolved IP from `assertSafeUrl` and pass it directly into the fetch (e.g. via a custom DNS resolver or `agent`/`lookup` override), rather than trusting a second independent resolution.
+- **Close the DNS-rebinding window:** `assertSafeUrl` currently validates DNS resolution once, then `fetchPage` re-resolves and connects separately; a malicious host could theoretically resolve to a safe IP at validation time and a private IP at fetch time. The fix is to pin the resolved IP from `assertSafeUrl` and pass it directly into the fetch (e.g. via a custom DNS resolver or `agent`/`lookup` override), rather than trusting a second independent resolution.
 - [FILL IN any other roadmap items, e.g. cross-domain crawling for handbooks hosted on a separate site, spaced-repetition intervals instead of confidence-weighted ordering, multi-LLM fallback if Gemini's free tier is exhausted]
 
 ## Testing
